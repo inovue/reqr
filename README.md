@@ -13,3 +13,12 @@ By cloning a repository from a remote repository directly to devcontainer, you c
 ## How to use?
 1. Click the "Open in Dev Containers" badge above.
 2. Wait for the container to be built.
+
+
+## References
+
+[Add crop functionality to BrowserCodeReader](https://github.com/zxing-js/library/issues/39#issuecomment-769339674)
+
+[ReactでQRコードリーダーを実装する](https://qiita.com/faunsu/items/2f13f1378b4f36b040b6)
+[Zxingでバーコードリーダーを作ってみた](https://stak.tech/news/14668)
+
