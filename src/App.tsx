@@ -1,6 +1,6 @@
 import { useState } from 'react'
 //import 'destyle.css'
-import { Scanner } from './lib/Scanner'
+import { Scanner } from './components/Scanner/Scanner'
 
 function App() {
   const [codes, setCodes] = useState<string[]>([])
