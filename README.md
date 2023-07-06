@@ -22,3 +22,4 @@ By cloning a repository from a remote repository directly to devcontainer, you c
 [ReactでQRコードリーダーを実装する](https://qiita.com/faunsu/items/2f13f1378b4f36b040b6)
 [Zxingでバーコードリーダーを作ってみた](https://stak.tech/news/14668)
 
+[WebRTCにおけるメディアの取り扱い](https://qiita.com/udonchan/items/77ca19f9aa8420e769c8)

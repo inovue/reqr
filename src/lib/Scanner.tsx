@@ -5,6 +5,9 @@ import { RadioButtonGroup } from './RadioButtonGroup'
 
 
 export type ScannerProps = {
+  timeout?:number,
+  interval?:number,
+  
   scale?:number;
   constraints?:MediaStreamConstraints;
   onReadCode?: (text: Result) => void;
@@ -12,7 +15,7 @@ export type ScannerProps = {
 
 export type VideoState = 'playing' | 'paused' | 'stopped'
 
-export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) => {
+export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, onReadCode }: ScannerProps) => {
   
   const codeReader = useMemo(() => new BrowserMultiFormatReader(), [])
   
@@ -29,6 +32,8 @@ export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) =>
   const isPaused = useMemo(()=>videoState === 'paused', [videoState]);
   const isStopped = useMemo(()=>videoState === 'stopped', [videoState]);
   
+  const scanInterval = useRef<number>(0);
+  const stopTimeout = useRef<number>(0);
 
   useEffect(()=>{
     (async () => {
@@ -44,8 +49,22 @@ export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) =>
     (async () => { await playVideo(); })();
 
     return () => { stopVideo(); };
-
   },[currentDevideId]);
+
+  useEffect(()=>{
+    if(isPlaying){
+      scanInterval.current = window.setInterval(()=>{scanFrame();}, interval);
+      stopTimeout.current = window.setTimeout(()=>{stopVideo();}, timeout);
+    }else{
+      window.clearInterval(scanInterval.current);
+      window.clearTimeout(stopTimeout.current);
+    }
+    
+    return () => { 
+      window.clearInterval(scanInterval.current);
+      window.clearTimeout(stopTimeout.current);
+    };
+  },[isPlaying]);
 
   const playVideo = async () => {
     if(!videoRef.current) return;
@@ -62,8 +81,6 @@ export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) =>
     }
     
     setVideoState(()=> 'playing');
-
-    scanFrame()
   }
 
   const initCanvas = () => {
@@ -95,14 +112,6 @@ export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) =>
   }
 
 
-  const onPlayVideo:ReactEventHandler<HTMLVideoElement> = () => {
-    setVideoState(()=> 'playing');
-    console.log(`video ${videoState}!`);
-  }
-  const onPauseVideo:ReactEventHandler<HTMLVideoElement> = () => {
-    //videoRef.current?.srcObject ? setVideoState(()=> 'paused') : setVideoState(()=> 'stopped')
-    console.log(`video ${videoState}!`);
-  }
 
   const onClickFrame:ReactEventHandler<HTMLDivElement> = () => {
     toggleVideo();
@@ -152,7 +161,7 @@ export const Scanner = ({ scale=0.5, constraints, onReadCode }: ScannerProps) =>
       <button onClick={() => toggleVideo() }>{isPaused?'Play':'Pause'}</button>
       
       <div style={{ position:'relative', height:'250px', backgroundColor:'#333' }}>
-        <video ref={videoRef} style={{ width:'auto', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} onPlay={onPlayVideo} onPause={onPauseVideo} playsInline />
+        <video ref={videoRef} style={{ width:'auto', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
         <div ref={frameRef} style={{ border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} onClick={onClickFrame} />
       </div>
       <canvas style={{ width:'100%' }}  ref={canvasRef} />
