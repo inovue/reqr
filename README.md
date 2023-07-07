@@ -23,3 +23,11 @@ By cloning a repository from a remote repository directly to devcontainer, you c
 [Zxingでバーコードリーダーを作ってみた](https://stak.tech/news/14668)
 
 [WebRTCにおけるメディアの取り扱い](https://qiita.com/udonchan/items/77ca19f9aa8420e769c8)
+
+
+★[Let's light a torch and explore MediaStreamTrack's capabilities](https://oberhofer.co/mediastreamtrack-and-its-capabilities/#waitandsee)
+
+[Web でカメラを使おう – WebRTC (getUserMedia) on WebView](https://houwa-js.co.jp/2019/06/20190604/)
+
+
+[Capabilities, constraints, and settings](https://developer.mozilla.org/en-US/docs/Web/API/Media_Capture_and_Streams_API/Constraints)

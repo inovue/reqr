@@ -1,6 +1,6 @@
 import {BrowserMultiFormatReader} from '@zxing/browser'
 import { Result } from '@zxing/library'
-import { ReactEventHandler, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RadioButtonGroup } from '../RadioButtonGroup/RadioButtonGroup'
 
 import Button from '../Button'
@@ -26,34 +26,37 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
-  const streamRef = useRef<MediaStream|null>(null)
 
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-  const [currentDeviceId, setcurrentDeviceId] = useState<string>()
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>()
+  const [deviceId, setDeviceId] = useState<string>()
   
-  const [videoState, setVideoState] = useState<VideoState>('stopped');
+  const [videoState, setVideoState] = useState<VideoState>();
   const isPlaying = useMemo(()=>videoState === 'playing', [videoState]);
   const isPaused = useMemo(()=>videoState === 'paused', [videoState]);
   const isStopped = useMemo(()=>videoState === 'stopped', [videoState]);
+  
   
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
 
   useEffect(()=>{
     (async () => {
-      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+      const [devices, ms] = await Promise.all([
+        BrowserMultiFormatReader.listVideoInputDevices(),
+        navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+      ])
       setDevices(()=>devices);
-      
-      const initialDeviceId = (await navigator.mediaDevices.getUserMedia(constraints || {video:{facingMode:'environment'}})).getVideoTracks()?.[0].getSettings().deviceId;
-      setcurrentDeviceId(()=>initialDeviceId);
+      setDeviceId(()=>ms.getVideoTracks()?.[0].getSettings().deviceId);
     })();
   }, []);
 
   useEffect(()=>{
-    (async () => { await playVideo(); })();
+    playVideo();
 
-    return () => { stopVideo(); };
-  },[currentDeviceId]);
+    return () => {
+      stopVideo();
+    };
+  },[deviceId]);
 
   useEffect(()=>{
     if(isPlaying){
@@ -70,47 +73,44 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
     };
   },[isPlaying]);
 
-  const playVideo = async () => {
-    if(!videoRef.current) return;
-    if(!currentDeviceId) return;
+  const playVideo = () => {
+    (async () =>{
+      if(!videoRef.current) return;
+      if(!deviceId) return;
+      
+      if(!videoRef.current.srcObject){
+        videoRef.current.srcObject = await navigator.mediaDevices.getUserMedia({video:{deviceId:deviceId}});
+      }
+      await videoRef.current.play();
 
-    if(!isPaused){
-      streamRef.current = await navigator.mediaDevices.getUserMedia({video:{deviceId:currentDeviceId}});
-      videoRef.current.srcObject = streamRef.current;
-      await videoRef.current.play();
-      initCanvas();
-      initFrame();
-    }else{
-      await videoRef.current.play();
-    }
-    
-    setVideoState(()=> 'playing');
+      if(!isPaused) initFrame();
+      setVideoState(()=> 'playing');
+    })()
   }
 
-  const initCanvas = () => {
-    if(!videoRef.current || !canvasRef.current) return;
+  const initFrame = () => {
+    if(!videoRef.current || !frameRef.current || !canvasRef.current) return;
+
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
-  }
-  const initFrame = () => {
-    if(!videoRef.current || !frameRef.current) return;
+
     frameRef.current.style.width = `${videoRef.current.clientWidth * scale}px`;
     frameRef.current.style.height = `${videoRef.current.clientHeight * scale}px`;
     //frameRef.current.style.left = `${(window.innerWidth - videoRef.current.clientWidth * scale) / 2}px`;
     //frameRef.current.style.top = `${(window.innerHeight - videoRef.current.clientHeight * scale) / 2}px`;
   }
+  
   const pauseVideo = () => {
     if(!videoRef.current) return;
-    if(!isPlaying) return;
-    
-    videoRef.current.pause();
+    if(isPlaying) videoRef.current.pause();
     setVideoState(()=> 'paused');
   }
   const stopVideo = () => {
-    console.log('stop video');
-    if(streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
-    if(videoRef.current) videoRef.current.srcObject = null;
-    setVideoState(()=> 'stopped');
+    if(videoRef.current && videoRef.current.srcObject instanceof MediaStream){
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+      setVideoState(()=> 'stopped');
+    }
   }
   const toggleVideo = () => {
     !isPlaying ? playVideo() : pauseVideo();
@@ -141,13 +141,13 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
     })
   }
 
-  const toggleCurrentDeviceId = () => {
-    if(!currentDeviceId) return;
-    if(devices.length <= 1) return;
+  const toggleDeviceId = () => {
+    if(!deviceId) return;
+    if(!devices || devices.length <= 1) return;
     
-    const index = devices.findIndex(d=>d.deviceId === currentDeviceId);
+    const index = devices.findIndex(d=>d.deviceId === deviceId);
     const nextIndex = index + 1 >= devices.length ? 0 : index + 1;
-    setcurrentDeviceId(()=>devices[nextIndex].deviceId);
+    setDeviceId(()=>devices[nextIndex].deviceId);
   }
 
   const found = (result:Result) => {
@@ -158,25 +158,27 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
   return (
     <>
       <RadioButtonGroup 
-        options={devices?.map(d=>({value:d.deviceId, label:d.label}))||[]} 
-        value={currentDeviceId} 
-        onChange={(e)=>setcurrentDeviceId(()=>e.target.value)}
+        options={devices?.map(d=>({label:d.label, value:d.deviceId})) || []}
+        value={deviceId} 
+        onChange={e=>setDeviceId(()=>e.target.value)}
       />
       <p>videoState:{videoState}</p>
       
-      <div style={{ position:'relative', height:'300px', backgroundColor:'#333' }}>
-        <video ref={videoRef} style={{ width:'auto', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
+      <div style={{ position:'relative', width:"100%", height:'300px', backgroundColor:'#333'}}>
+        <video ref={videoRef} style={{ width:'auto', maxWidth:'100%', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
         <div ref={frameRef} style={{ border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />
         
         <div style={{position:'absolute', left:0, top:0, width:'100%', }}>
           <div style={{display:'flex', alignItems:'center', padding:'.5rem'}}>
-            <div style={{flex:1, color:'#fff'}}>QRコードを読み取ってください</div>
+            <div style={{flex:1, padding:'0 3rem'}}>
+              <input type="range" id="cowbell" name="cowbell" min="0" max="100" value="90" step="10" style={{width:'100%'}}/>
+            </div>
             {!isStopped && <Button onClick={() => stopVideo()}><FaTimes /></Button>}
           </div>
         </div>
         <div style={{position:'absolute', left:0, bottom:0, width:'100%' }}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'3rem', padding:'.5rem'}}>
-            <Button onClick={()=>toggleCurrentDeviceId()} ><FaRotate /></Button>
+            <Button onClick={()=>toggleDeviceId()} ><FaRotate /></Button>
             <Button size='lg' onClick={()=>toggleVideo()}>{isPlaying?<FaPause />:<FaPlay />}</Button>
             <Button><MdFlashlightOn /></Button>
           </div>
