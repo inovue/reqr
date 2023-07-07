@@ -1,6 +1,6 @@
 import {BrowserMultiFormatReader} from '@zxing/browser'
 import { Result } from '@zxing/library'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChangeEventHandler, ReactEventHandler, useEffect, useMemo, useRef, useState } from 'react'
 import { RadioButtonGroup } from '../RadioButtonGroup/RadioButtonGroup'
 
 import Button from '../Button'
@@ -19,7 +19,7 @@ export type ScannerProps = {
 
 export type VideoState = 'playing' | 'paused' | 'stopped'
 
-export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, onReadCode }: ScannerProps) => {
+export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: ScannerProps) => {
   
   const codeReader = useMemo(() => new BrowserMultiFormatReader(), [])
   
@@ -35,7 +35,17 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
   const isPaused = useMemo(()=>videoState === 'paused', [videoState]);
   const isStopped = useMemo(()=>videoState === 'stopped', [videoState]);
   
-  
+  const mediaStream = useMemo(()=>{
+    if(videoRef.current && videoRef.current.srcObject instanceof MediaStream){
+      return videoRef.current.srcObject;
+    }
+  }, [videoRef.current?.srcObject]);
+  const mediaStreamTrack = useMemo(()=> mediaStream?.getTracks()?.[0], [mediaStream]);
+
+  const capabilities = useMemo(()=> mediaStreamTrack?.getCapabilities(), [mediaStreamTrack]);
+  const constraints = useMemo(()=> mediaStreamTrack?.getConstraints(), [mediaStreamTrack]);
+  const [trackSetting, setTrackSetting] = useState<MediaTrackSettings>();
+
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
 
@@ -73,6 +83,8 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
     };
   },[isPlaying]);
 
+
+  
   const playVideo = () => {
     (async () =>{
       if(!videoRef.current) return;
@@ -150,6 +162,20 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
     setDeviceId(()=>devices[nextIndex].deviceId);
   }
 
+  const toggleTorch = () => {
+    if(!mediaStreamTrack) return;
+    applyConstraints({advanced:[{torch:!mediaStreamTrack.getSettings().torch}]});
+  }
+  const onChangeZoom: ChangeEventHandler<HTMLInputElement> = (e) => {
+    applyConstraints({advanced:[{zoom:parseFloat(e.target.value)}]});
+  }
+  const applyConstraints = async (constraints:MediaTrackConstraints) => {
+    if(!mediaStreamTrack) return;
+    await mediaStreamTrack.applyConstraints(constraints);
+    setTrackSetting(()=>mediaStreamTrack?.getSettings())
+  }
+
+
   const found = (result:Result) => {
     console.log(result)
     onReadCode?.(result)
@@ -163,15 +189,27 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
         onChange={e=>setDeviceId(()=>e.target.value)}
       />
       <p>videoState:{videoState}</p>
-      
+      <p style={{wordSpacing:'pre'}}>{JSON.stringify(capabilities, null, 2)}</p>
+      <p style={{wordSpacing:'pre'}}>{JSON.stringify(trackSetting, null, 2)}</p>
+
       <div style={{ position:'relative', width:"100%", height:'300px', backgroundColor:'#333'}}>
         <video ref={videoRef} style={{ width:'auto', maxWidth:'100%', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
         <div ref={frameRef} style={{ border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />
         
+
         <div style={{position:'absolute', left:0, top:0, width:'100%', }}>
           <div style={{display:'flex', alignItems:'center', padding:'.5rem'}}>
             <div style={{flex:1, padding:'0 3rem'}}>
-              <input type="range" id="cowbell" name="cowbell" min="0" max="100" value="90" step="10" style={{width:'100%'}}/>
+              {(capabilities && 'zoom' in capabilities) && 
+                <input type="range" id="zoom" name="zoom" 
+                  min={capabilities?.['zoom']['min']} 
+                  max={capabilities?.['zoom']['max']} 
+                  step={capabilities?.['zoom']['step']} 
+                  value={trackSetting?.['zoom']} 
+                  onChange={onChangeZoom} 
+                  style={{width:'100%'}}
+                />
+              }
             </div>
             {!isStopped && <Button onClick={() => stopVideo()}><FaTimes /></Button>}
           </div>
@@ -180,7 +218,10 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, constraints, o
           <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'3rem', padding:'.5rem'}}>
             <Button onClick={()=>toggleDeviceId()} ><FaRotate /></Button>
             <Button size='lg' onClick={()=>toggleVideo()}>{isPlaying?<FaPause />:<FaPlay />}</Button>
-            <Button><MdFlashlightOn /></Button>
+            
+            {(capabilities && 'torch' in capabilities) && 
+              <Button onClick={()=>toggleTorch()}>{trackSetting?.['torch'] ? <MdFlashlightOff/> : <MdFlashlightOn/> }</Button>
+            }
           </div>
         </div>
       </div>
