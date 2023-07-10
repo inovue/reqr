@@ -4,7 +4,6 @@ export const button = recipe({
   base: {
     borderRadius: 6,
     cursor: 'pointer',
-    height: '100%',
   },
 
   variants: {
@@ -19,13 +18,12 @@ export const button = recipe({
       }
     },
     size: {
-      sm: { fontSize:'.8rem', padding: 6 },
-      md: { fontSize:'1.5rem', padding: 8 },
-      lg: { fontSize:'2.2rem', padding: 12 },
-      xl: { fontSize:'2.5rem', padding: 12 }
+      sm: { fontSize:'.8rem', height:'1.3rem', padding: '.25rem' },
+      md: { fontSize:'1.5rem', height:'3.0rem', padding: '.5rem' },
+      lg: { fontSize:'2.2rem', height:'3.9rem', padding: '.75rem' }
     },
     rounded: {
-      true: { borderRadius: 999 }
+      true: { borderRadius: 999, aspectRatio:"1" }
     }
   },
 

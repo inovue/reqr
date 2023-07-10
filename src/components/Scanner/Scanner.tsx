@@ -1,27 +1,45 @@
-import {BrowserMultiFormatReader} from '@zxing/browser'
+import {BrowserMultiFormatReader, BrowserQRCodeReader} from '@zxing/browser'
 import { Result } from '@zxing/library'
-import { ChangeEventHandler, ReactEventHandler, useEffect, useMemo, useRef, useState } from 'react'
-import { RadioButtonGroup } from '../RadioButtonGroup/RadioButtonGroup'
+import { ChangeEventHandler, useEffect, useMemo, useRef, useState } from 'react'
 
 import Button from '../Button'
-import {FaPlay, FaPause, FaStop, FaTimes, } from 'react-icons/fa'
+import {FaPlay, FaPause, FaTimes, } from 'react-icons/fa'
 import { FaRotate } from 'react-icons/fa6'
 import {MdFlashlightOn, MdFlashlightOff } from 'react-icons/md'
+
+export type onReadCodeHandler = (text: Result) => void;
 
 export type ScannerProps = {
   timeout?:number,
   interval?:number,
-  
+  closable?:boolean
+
   scale?:number;
   constraints?:MediaStreamConstraints;
-  onReadCode?: (text: Result) => void;
+  onReadCode?: onReadCodeHandler;
+}
+
+export interface MediaTrackAdvancedCapabilities extends MediaTrackCapabilities {
+  torch?:boolean;
+  zoom?:DoubleRange & {step?:number};
+}
+export interface MediaTrackAdvancedConstraintSet extends MediaTrackConstraintSet {
+  torch?:boolean;
+  zoom?:ConstrainDouble;
+}
+export interface MediaTrackAdvancedConstraints extends MediaTrackConstraints {
+  advanced?: MediaTrackAdvancedConstraintSet[];
+}
+export interface MediaTrackAdvancedSettings extends MediaTrackSettings {
+  torch?:boolean;
+  zoom?:number
 }
 
 export type VideoState = 'playing' | 'paused' | 'stopped'
 
-export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: ScannerProps) => {
+export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5, onReadCode }: ScannerProps) => {
   
-  const codeReader = useMemo(() => new BrowserMultiFormatReader(), [])
+  const codeReader = useMemo(() => new BrowserQRCodeReader(), [])
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -42,21 +60,21 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: 
   }, [videoRef.current?.srcObject]);
   const mediaStreamTrack = useMemo(()=> mediaStream?.getTracks()?.[0], [mediaStream]);
 
-  const capabilities = useMemo(()=> mediaStreamTrack?.getCapabilities(), [mediaStreamTrack]);
+  const capabilities = useMemo(()=> mediaStreamTrack?.getCapabilities() as MediaTrackAdvancedCapabilities, [mediaStreamTrack]);
   const constraints = useMemo(()=> mediaStreamTrack?.getConstraints(), [mediaStreamTrack]);
-  const [trackSetting, setTrackSetting] = useState<MediaTrackSettings>();
+  const [trackSetting, setTrackSetting] = useState<MediaTrackAdvancedSettings>();
 
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
 
   useEffect(()=>{
     (async () => {
-      const [devices, ms] = await Promise.all([
-        BrowserMultiFormatReader.listVideoInputDevices(),
-        navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-      ])
-      setDevices(()=>devices);
-      setDeviceId(()=>ms.getVideoTracks()?.[0].getSettings().deviceId);
+      const videoDevices = await BrowserQRCodeReader.listVideoInputDevices();
+      setDevices(()=>videoDevices);
+      if(1<=videoDevices.length){
+        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+        setDeviceId(()=>stream.getVideoTracks()?.[0].getSettings().deviceId);
+      }
     })();
   }, []);
 
@@ -110,6 +128,13 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: 
     frameRef.current.style.height = `${videoRef.current.clientHeight * scale}px`;
     //frameRef.current.style.left = `${(window.innerWidth - videoRef.current.clientWidth * scale) / 2}px`;
     //frameRef.current.style.top = `${(window.innerHeight - videoRef.current.clientHeight * scale) / 2}px`;
+
+
+    if(canvasRef.current?.getContext('2d')?.filter){
+      //canvasRef.current.getContext('2d').filter = 'grayscale(80%) brightness(1.5)';
+    }
+    
+
   }
   
   const pauseVideo = () => {
@@ -132,6 +157,7 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: 
 
   const scanFrame = () => {
     if (canvasRef.current === null || videoRef.current === null ) return;
+    
     canvasRef.current.getContext('2d')?.drawImage(
       videoRef.current,
       // source x, y, w, h:
@@ -164,12 +190,12 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: 
 
   const toggleTorch = () => {
     if(!mediaStreamTrack) return;
-    applyConstraints({advanced:[{torch:!mediaStreamTrack.getSettings().torch}]});
+    applyConstraints({advanced:[{torch:!(mediaStreamTrack.getSettings() as MediaTrackAdvancedSettings).torch}]});
   }
   const onChangeZoom: ChangeEventHandler<HTMLInputElement> = (e) => {
     applyConstraints({advanced:[{zoom:parseFloat(e.target.value)}]});
   }
-  const applyConstraints = async (constraints:MediaTrackConstraints) => {
+  const applyConstraints = async (constraints:MediaTrackAdvancedConstraints) => {
     if(!mediaStreamTrack) return;
     await mediaStreamTrack.applyConstraints(constraints);
     setTrackSetting(()=>mediaStreamTrack?.getSettings())
@@ -177,56 +203,64 @@ export const Scanner = ({ timeout=30000, interval=500, scale=0.5, onReadCode }: 
 
 
   const found = (result:Result) => {
+    
+    window.clearInterval(scanInterval.current);
+    window.clearTimeout(stopTimeout.current);
+    scanInterval.current = window.setInterval(()=>{scanFrame();}, interval);
+    stopTimeout.current = window.setTimeout(()=>{stopVideo();}, timeout);
+    
     console.log(result)
     onReadCode?.(result)
+    
   }
 
   return (
     <>
-      <RadioButtonGroup 
-        options={devices?.map(d=>({label:d.label, value:d.deviceId})) || []}
-        value={deviceId} 
-        onChange={e=>setDeviceId(()=>e.target.value)}
-      />
-      <p>videoState:{videoState}</p>
-      <p style={{wordSpacing:'pre'}}>{JSON.stringify(capabilities, null, 2)}</p>
-      <p style={{wordSpacing:'pre'}}>{JSON.stringify(trackSetting, null, 2)}</p>
-
-      <div style={{ position:'relative', width:"100%", height:'300px', backgroundColor:'#333'}}>
+      <div style={{ position:'relative', width:"100%", height:'100dvh', backgroundColor:'#333'}}>
         <video ref={videoRef} style={{ width:'auto', maxWidth:'100%', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
-        <div ref={frameRef} style={{ border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />
+        <div ref={frameRef} style={{visibility:isPlaying?'visible':'hidden', border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />
         
-
-        <div style={{position:'absolute', left:0, top:0, width:'100%', }}>
-          <div style={{display:'flex', alignItems:'center', padding:'.5rem'}}>
-            <div style={{flex:1, padding:'0 3rem'}}>
-              {(capabilities && 'zoom' in capabilities) && 
-                <input type="range" id="zoom" name="zoom" 
-                  min={capabilities?.['zoom']['min']} 
-                  max={capabilities?.['zoom']['max']} 
-                  step={capabilities?.['zoom']['step']} 
-                  value={trackSetting?.['zoom']} 
-                  onChange={onChangeZoom} 
-                  style={{width:'100%'}}
-                />
-              }
-            </div>
-            {!isStopped && <Button onClick={() => stopVideo()}><FaTimes /></Button>}
+        {closable && 
+          <div style={{position:'absolute', right:0, top:0}}>
+            <Button onClick={() => stopVideo()}><FaTimes /></Button>
           </div>
-        </div>
+        }
+        {(capabilities && 'zoom' in capabilities) && 
+          <div style={{position:'absolute', left:'50%', right:'50%', top:'24px', transform: 'translate(-50%, -50%)', width:'180px' }} >
+              <input type="range" id="zoom" name="zoom" 
+                min={capabilities.zoom?.min} 
+                max={capabilities.zoom?.max} 
+                step={capabilities.zoom?.step} 
+                value={trackSetting?.zoom} 
+                onChange={onChangeZoom} 
+                style={{width:'100%'}}
+              />
+          </div>
+        }
         <div style={{position:'absolute', left:0, bottom:0, width:'100%' }}>
-          <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'3rem', padding:'.5rem'}}>
-            <Button onClick={()=>toggleDeviceId()} ><FaRotate /></Button>
-            <Button size='lg' onClick={()=>toggleVideo()}>{isPlaying?<FaPause />:<FaPlay />}</Button>
-            
-            {(capabilities && 'torch' in capabilities) && 
-              <Button onClick={()=>toggleTorch()}>{trackSetting?.['torch'] ? <MdFlashlightOff/> : <MdFlashlightOn/> }</Button>
+          <div style={{display:'grid', gridTemplateColumns:'55px 75px 55px', alignItems:'center', justifyContent:'center', justifyItems:'center', gap:'3rem', padding:'.5rem'}}>
+            {(devices && 2 <= devices.length ) && mediaStream ?
+              <Button onClick={()=>toggleDeviceId()} ><FaRotate /></Button> : <div />
+            }
+            {(devices && 1 <= devices.length ) &&
+              <Button size='lg' onClick={()=>toggleVideo()}>{isPlaying?<FaPause />:<FaPlay />}</Button>
+            }
+            {(capabilities && 'torch' in capabilities) ?
+              <Button onClick={()=>toggleTorch()}>{trackSetting?.torch ? <MdFlashlightOff/> : <MdFlashlightOn/> }</Button> : <div />
             }
           </div>
         </div>
       </div>
       
-      <canvas style={{ width:'100%' }}  ref={canvasRef} />
+      <canvas style={{ width:'100%', display:'' }}  ref={canvasRef} />
+
+
+      <p>videoState:{videoState}</p>
+      {/*
+      <p style={{wordSpacing:'pre'}}>{JSON.stringify(capabilities, null, 2)}</p>
+      <p style={{wordSpacing:'pre'}}>{JSON.stringify(trackSetting, null, 2)}</p>
+      */}
+      
     </>
   )
 }
