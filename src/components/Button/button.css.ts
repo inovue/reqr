@@ -4,17 +4,23 @@ export const button = recipe({
   base: {
     borderRadius: 6,
     cursor: 'pointer',
+    borderTop:'1px solid',
+    borderRight: '0px solid',
+    borderBottom: '0px solid',
+    borderLeft: '1px solid',
   },
 
   variants: {
     dark: {
-      true: { 
-        background: '#222',
-        color: '#eee'
+      true: {
+        borderColor: '#777',
+        background: 'linear-gradient(125deg, #666, #111)',
+        color: '#ccc'
       },
       false:{
-        background: '#eee',
-        color: '#222'
+        borderColor: '#888',
+        background: 'linear-gradient(125deg, #999, #eee)',
+        color: '#444'
       }
     },
     size: {
