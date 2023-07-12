@@ -1,6 +1,7 @@
 import { useState } from 'react'
 //import 'destyle.css'
-import { Scanner, onReadCodeHandler } from './components/Scanner/Scanner'
+import {onReadCodeHandler } from './components/Scanner/Scanner'
+import {Scanner} from './components/Scanner'
 
 function App() {
   const [codes, setCodes] = useState<string[]>([])
