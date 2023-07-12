@@ -1,6 +1,6 @@
 import {BrowserMultiFormatReader} from '@zxing/browser'
 import { Result } from '@zxing/library'
-import { ChangeEventHandler, useEffect, useMemo, useRef, useState } from 'react'
+import { ChangeEventHandler, useEffect, useMemo, useRef } from 'react'
 
 import Button from './Button'
 import {FaPlay, FaPause, FaTimes, } from 'react-icons/fa'
@@ -9,7 +9,8 @@ import {MdFlashlightOn, MdFlashlightOff } from 'react-icons/md'
 import { MediaTrackAdvancedConstraints } from '../types'
 import { useVideoInputDevices, useScanner } from '../hooks'
 
-export type onReadCodeHandler = (text: Result) => void;
+export type OnDecodedHandler = (text: Result|void) => void;
+export type OnDecodeErrorHandler = (error: Error) => void;
 
 export type ScannerProps = {
   timeout?:number,
@@ -18,12 +19,13 @@ export type ScannerProps = {
 
   scale?:number;
   constraints?:MediaStreamConstraints;
-  onReadCode?: onReadCodeHandler;
+  onDecoded?: OnDecodedHandler;
+  onDecodeError?: OnDecodeErrorHandler;
 }
 
 const defaultConstraints:MediaTrackConstraints = {facingMode:'environment'}
   
-export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5, onReadCode }: ScannerProps) => {
+export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5, onDecoded, onDecodeError }: ScannerProps) => {
   
   const codeReader = useMemo(() => new BrowserMultiFormatReader(), [])
   
@@ -46,18 +48,6 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
       play(videoRef.current, defaultConstraints)
     }
   }, [devices]);
-
-  /*
-  useEffect(()=>{
-    if(deviceId){
-      play(videoRef.current, {deviceId:deviceId});
-    }
-    
-    return () => {
-      stop(videoRef.current);
-    };
-  },[deviceId]);
-  */
  
   useEffect(()=>{
     window.clearInterval(scanInterval.current);
@@ -143,7 +133,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     canvasRef.current.toBlob(blob => {
       if(blob === null) return;
       const url = URL.createObjectURL(blob)
-      //codeReader.decodeFromImageUrl(url).then(found)
+      codeReader.decodeFromImageUrl(url).catch(decodeErrorHandler).then(decodeHandler)
     })
   }
 
@@ -168,10 +158,14 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
   }
 
 
-  const found = (result:Result) => {
+  const decodeHandler:OnDecodedHandler = (result) => {
+    if(!result) return;
     window.clearTimeout(stopTimeout.current);
     stopTimeout.current = window.setTimeout(()=>{stop(videoRef.current);}, timeout);
-    onReadCode?.(result)
+    onDecoded?.(result)
+  }
+  const decodeErrorHandler:OnDecodeErrorHandler = (error) => {
+    onDecodeError?.(error);
   }
 
   return (
@@ -208,7 +202,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
               }
             </div>
             <div>
-              {devices && 1 <= devices.length  &&
+              {(scannerState === 'STOPPED' || scannerState === 'PLAYING' || scannerState === 'PAUSED')  &&
                 <Button size='lg' onClick={()=>togglePlay()}>{scannerState==='PLAYING'?<FaPause />:<FaPlay />}</Button>
               }
             </div>
