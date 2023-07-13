@@ -27,34 +27,30 @@ const defaultConstraints:MediaTrackConstraints = {facingMode:'environment'}
   
 export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5, onDecoded, onDecodeError }: ScannerProps) => {
   
-  const codeReader = useMemo(() => new BrowserMultiFormatReader(), [])
+  const codeReader = useMemo(() => new BrowserMultiFormatReader(), []);
   
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const frameRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
 
   const devices = useVideoInputDevices();
   
-  const {state:scannerState, stream, track, constraints, deviceId, capabilities, settings:trackSetting, setSettings} = useScanner(videoRef.current);
+  const {state:scannerState, deviceId, stream, track, capabilities, settings:trackSetting, setSettings} = useScanner(videoRef.current);
 
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
 
   
   useEffect(()=>{
-    if(devices && 1<=devices.length){
-      //const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-      //setDeviceId(()=>stream.getVideoTracks()?.[0].getSettings().deviceId);
-      play(videoRef.current, defaultConstraints)
-    }
+    if(1 <= (devices?.length ?? 0)) play(videoRef.current, defaultConstraints);
   }, [devices]);
  
   useEffect(()=>{
     window.clearInterval(scanInterval.current);
     window.clearTimeout(stopTimeout.current);
     if(scannerState==='PLAYING'){
-      scanInterval.current = window.setInterval(()=>{scanFrame();}, interval);
-      stopTimeout.current = window.setTimeout(()=>{stop(videoRef.current);}, timeout);
+      scanInterval.current = window.setInterval(()=>scanFrame(), interval);
+      stopTimeout.current = window.setTimeout(()=>stop(videoRef.current), timeout);
     }
     return () => { 
       window.clearInterval(scanInterval.current);
@@ -68,7 +64,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     (async () =>{
       if(!videoElement) return;
       if(constraints){
-        videoElement.srcObject && stop(videoElement)
+        if(videoElement.srcObject) stop(videoElement);
         videoElement.srcObject = await navigator.mediaDevices.getUserMedia({video:constraints});
       }
       await videoElement.play();
@@ -85,9 +81,8 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     frameRef.current.style.height = `${videoRef.current.clientHeight * scale}px`;
     //frameRef.current.style.left = `${(window.innerWidth - videoRef.current.clientWidth * scale) / 2}px`;
     //frameRef.current.style.top = `${(window.innerHeight - videoRef.current.clientHeight * scale) / 2}px`;
-    if(canvasRef.current?.getContext('2d')?.filter){
-      //canvasRef.current.getContext('2d').filter = 'grayscale(80%) brightness(1.5)';
-    }
+    
+    //canvasRef.current.getContext('2d').filter = 'grayscale(80%) brightness(1.5)';
   }
   
   const pause = (videoElement:HTMLVideoElement|null) => {
@@ -102,16 +97,15 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     videoElement.srcObject = null;
   }
   const togglePlay = () => {
-    if(scannerState==='PLAYING'){
-      pause(videoRef.current);
-    }else if(scannerState==='PAUSED'){
-      play(videoRef.current);
-    }else{
-      play(videoRef.current, deviceId ? {deviceId:deviceId} : defaultConstraints);
+    switch(scannerState){
+      case 'PLAYING':
+        pause(videoRef.current); break;
+      case 'PAUSED':
+        play(videoRef.current); break;
+      default:
+        play(videoRef.current, deviceId ? {deviceId:deviceId} : defaultConstraints); break;
     }
   }
-
-
 
   const scanFrame = () => {
     if (canvasRef.current === null || videoRef.current === null ) return;
@@ -131,9 +125,16 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     )
     // convert the canvas image to an image blob and stick it in an image element
     canvasRef.current.toBlob(blob => {
-      if(blob === null) return;
-      const url = URL.createObjectURL(blob)
-      codeReader.decodeFromImageUrl(url).catch(decodeErrorHandler).then(decodeHandler)
+      if(!blob) return;
+      const url = URL.createObjectURL(blob);
+      codeReader.decodeFromImageUrl(url).then((result)=>{
+        if(!result) return;
+        window.clearTimeout(stopTimeout.current);
+        stopTimeout.current = window.setTimeout(()=>{stop(videoRef.current);}, timeout);
+        onDecoded?.(result);
+      }).catch((error)=>{
+        onDecodeError?.(error);
+      })
     })
   }
 
@@ -157,16 +158,6 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
     setSettings(()=>mediaStreamTrack.getSettings() || null)
   }
 
-
-  const decodeHandler:OnDecodedHandler = (result) => {
-    if(!result) return;
-    window.clearTimeout(stopTimeout.current);
-    stopTimeout.current = window.setTimeout(()=>{stop(videoRef.current);}, timeout);
-    onDecoded?.(result)
-  }
-  const decodeErrorHandler:OnDecodeErrorHandler = (error) => {
-    onDecodeError?.(error);
-  }
 
   return (
     <>
@@ -197,7 +188,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
         <div style={{position:'absolute', left:0, bottom:0, width:'100%' }}>
           <div style={{display:'grid', gridTemplateColumns:'55px 75px 55px', alignItems:'center', justifyContent:'center', justifyItems:'center', gap:'3rem', padding:'.5rem'}}>
             <div>
-              {devices && 2 <= devices.length && stream && 
+              {2 <= (devices?.length||0) && stream && 
                 <Button onClick={()=>toggleDevice()} ><FaRotate /></Button>
               }
             </div>
@@ -224,7 +215,6 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
       
       {/*<p style={{whiteSpace:'pre-wrap'}}>capabilities: {JSON.stringify(capabilities, null, 2)}</p>*/}
       <p style={{whiteSpace:'pre-wrap'}}>trackSetting: {JSON.stringify(trackSetting, null, 2)}</p>
-      
       
     </>
   )
