@@ -1,6 +1,6 @@
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { useEffect, useMemo, useState } from "react";
-import { MediaTrackAdvancedCapabilities, MediaTrackAdvancedConstraints, MediaTrackAdvancedSettings, ScannerState } from "../types";
+import { MediaTrackAdvancedCapabilities, MediaTrackAdvancedConstraints, MediaTrackAdvancedSettings, ScannerState, VideoSize } from "../types";
 
 
 export const useVideoInputDevices = () => {
@@ -31,23 +31,44 @@ export const useScanner = (videoElement: HTMLVideoElement|null) => {
   const [state, setState] = useState<ScannerState|null>(null);
   const [settings, setSettings] = useState<MediaTrackAdvancedSettings|null>(null);
 
+  const [videoSize, setVideoSize] = useState<VideoSize|null>(null);
+  
   const track = useMemo(()=> stream?.getTracks()?.[0] || null, [stream]);
   const capabilities = useMemo(()=> track?.getCapabilities() as (MediaTrackAdvancedCapabilities|null) || null, [track]);
   const constraints = useMemo(()=> track?.getConstraints() as (MediaTrackAdvancedConstraints|null) || null, [track]);
   //const settings = useMemo(()=> track?.getSettings() as (MediaTrackAdvancedSettings|null) || null, [track]);
   const deviceId = useMemo(()=> capabilities?.deviceId || null,[capabilities])
 
-
+  
 
   useEffect(() => {
     if(!videoElement) return;
     const handleSrcObjectChange:EventListener = (event) => {
       console.log("useScanner", event.type, videoElement.srcObject)
       
-      const srcObject:MediaStream|null = videoElement.srcObject as MediaStream|null;
+      const srcObject = videoElement.srcObject as MediaStream|null;
       setStream(()=>srcObject);
       setSettings(()=>srcObject?.getTracks()?.[0].getSettings() || null);
-      if(event.type in eventState) setState(()=>eventState[event.type]);
+      
+      if(event.type in eventState){
+        setState(()=>eventState[event.type]);
+      }
+      
+      if(event.type === 'playing'){
+        setVideoSize(()=>({
+          video:{
+            width:videoElement.videoWidth, 
+            height:videoElement.videoHeight,
+          },
+          client:{
+            width:videoElement.clientWidth,
+            height:videoElement.clientHeight
+          }
+        }));
+      }else if(event.type === 'emptied'){
+        setVideoSize(()=>null);
+      }
+
     };
     videoElement.addEventListener('play', handleSrcObjectChange);
     videoElement.addEventListener('playing', handleSrcObjectChange);
@@ -64,51 +85,6 @@ export const useScanner = (videoElement: HTMLVideoElement|null) => {
     };
   }, [videoElement]);
   
-  const scanner = { state, stream, track, capabilities, constraints, settings, setSettings, deviceId }
+  const scanner = { state, stream, track, capabilities, constraints, settings, setSettings, deviceId, videoSize }
   return scanner
 }
-
-
-
-
-
-
-
-/*
-export const useMediaStreamTrack = (mediaStream: MediaStream|null) => {
-  return useMemo(()=> {
-    if(!mediaStream) return null;
-    const tracks = mediaStream.getTracks();
-    return (0 < tracks.length) ? tracks[0] : null;
-  }, [mediaStream]);
-}
-
-export const useCapabilities = (mediaStreamTrack: MediaStreamTrack|null) => {
-  return useMemo(()=> {
-    if(!mediaStreamTrack) return null;
-    return mediaStreamTrack?.getCapabilities() as MediaTrackAdvancedCapabilities
-  }, [mediaStreamTrack]);
-}
-
-export const useConstraints = (mediaStreamTrack: MediaStreamTrack|null) => {
-  return useMemo(()=> {
-    if(!mediaStreamTrack) return null;
-    return mediaStreamTrack?.getConstraints() as MediaTrackAdvancedConstraints
-  }, [mediaStreamTrack]);
-}
-
-export const useTrackSetting = (mediaStreamTrack: MediaStreamTrack|null) => {
-  return useMemo(()=> {
-    if(!mediaStreamTrack) return null;
-    return mediaStreamTrack?.getSettings() as MediaTrackAdvancedSettings
-  }, [mediaStreamTrack]);
-}
-
-
-export const useCanTorch = (capabilities: MediaTrackAdvancedCapabilities|null) => {
-  return useMemo(()=> !!capabilities?.torch, [capabilities]);
-}
-export const useCanZoom = (capabilities: MediaTrackAdvancedCapabilities|null) => {
-  return useMemo(()=> !!capabilities?.zoom, [capabilities]);
-}
-*/

@@ -9,6 +9,9 @@ import {MdFlashlightOn, MdFlashlightOff } from 'react-icons/md'
 import { MediaTrackAdvancedConstraints } from '../types'
 import { useVideoInputDevices, useScanner } from '../hooks'
 
+import Frame from './Frame'
+import { ReactComponent as IconQR } from '../assets/symbols/qr.svg'
+
 export type OnDecodedHandler = (text: Result|void) => void;
 export type OnDecodeErrorHandler = (error: Error) => void;
 
@@ -35,7 +38,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
 
   const devices = useVideoInputDevices();
   
-  const {state:scannerState, deviceId, stream, track, capabilities, settings:trackSetting, setSettings} = useScanner(videoRef.current);
+  const {state:scannerState, deviceId, stream, track, capabilities, settings:trackSetting, setSettings, videoSize} = useScanner(videoRef.current);
 
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
@@ -166,8 +169,10 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
 
       <div style={{ position:'relative', width:"100%", height:'90dvh', backgroundColor:'#333'}}>
         <video ref={videoRef} style={{ width:'auto', maxWidth:'100%', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
+        <Frame videoSize={videoSize} >
+          <IconQR style={{fill:'white', opacity:0.6, width:'150px', height:'150'}}/>
+        </Frame>/
         <div ref={frameRef} style={{visibility:(scannerState==='PLAYING')?'visible':'hidden', border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />
-        
         {closable && 
           <div style={{position:'absolute', right:0, top:0}}>
             <Button onClick={() => stop(videoRef.current)}><FaTimes /></Button>
@@ -213,9 +218,10 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
       <p style={{whiteSpace:'pre-wrap'}}>stream: {JSON.stringify(stream?.id, null, 2)}</p>
       <p style={{whiteSpace:'pre-wrap'}}>track: {JSON.stringify(track?.id, null, 2)}</p>
       
-      {/*<p style={{whiteSpace:'pre-wrap'}}>capabilities: {JSON.stringify(capabilities, null, 2)}</p>*/}
+      <p style={{whiteSpace:'pre-wrap'}}>capabilities: {JSON.stringify(capabilities, null, 2)}</p>
       <p style={{whiteSpace:'pre-wrap'}}>trackSetting: {JSON.stringify(trackSetting, null, 2)}</p>
-      
+
+      <p style={{whiteSpace:'pre-wrap'}}>videoSize: {JSON.stringify(videoSize, null, 2)}</p>
     </>
   )
 }

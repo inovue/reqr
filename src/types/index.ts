@@ -18,3 +18,14 @@ export interface MediaTrackAdvancedSettings extends MediaTrackSettings {
   torch?:boolean;
   zoom?:number
 }
+
+
+export type Size = {
+  width: number;
+  height: number;
+}
+export interface VideoSize {
+  video:Size
+  client:Size
+}
+

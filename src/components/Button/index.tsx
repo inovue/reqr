@@ -3,12 +3,12 @@ import {button} from './button.css.ts';
 
 export type ButtonProp = JSX.IntrinsicElements['button'] & {
   dark?: boolean;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
   rounded?: boolean;
   children?: React.ReactNode;
 }
 
-const IconButton: React.FC<ButtonProp> = ({dark=true, size='md', rounded=true, children, ...props}) => {
+const Button: React.FC<ButtonProp> = ({dark=true, size='md', rounded=true, children, ...props}) => {
   return (
     <button className={button({ dark, size, rounded })} {...props}>
       <div style={{lineHeight:0}}>{children}</div>
@@ -16,4 +16,4 @@ const IconButton: React.FC<ButtonProp> = ({dark=true, size='md', rounded=true, c
   )
 }
 
-export default IconButton;
+export default Button;
