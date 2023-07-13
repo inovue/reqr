@@ -1,5 +1,4 @@
 import {button} from './button.css.ts';
-//import 'destyle.css'
 
 export type ButtonProp = JSX.IntrinsicElements['button'] & {
   dark?: boolean;

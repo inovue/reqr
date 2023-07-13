@@ -29,3 +29,14 @@ export interface VideoSize {
   client:Size
 }
 
+
+export interface Scanner {
+  state: ScannerState|null;
+  stream: MediaStream|null;
+  videoSize: VideoSize|null;
+  track: MediaStreamTrack|null;
+  capabilities: MediaTrackAdvancedCapabilities|null;
+  constraints: MediaTrackAdvancedConstraints|null;
+  settings: MediaTrackAdvancedSettings|null;
+  deviceId: string|null;
+}
