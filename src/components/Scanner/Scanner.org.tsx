@@ -2,14 +2,14 @@ import {BrowserMultiFormatReader} from '@zxing/browser'
 import { Result } from '@zxing/library'
 import { ChangeEventHandler, useEffect, useMemo, useRef } from 'react'
 
-import Button from './Button'
+import Button from '../Button/Button'
 import {FaPlay, FaPause, FaTimes, } from 'react-icons/fa'
 import { FaRotate } from 'react-icons/fa6'
 import {MdFlashlightOn, MdFlashlightOff } from 'react-icons/md'
-import { MediaTrackAdvancedConstraints } from '../types'
-import { useVideoInputDevices, useScanner } from '../hooks'
+import { MediaTrackAdvancedConstraints } from '../../types'
+import { useVideoInputDevices, useScanner } from '../../hooks'
 
-import Frame from './Frame'
+import Frame from './ScannerFrame'
 import { ReactComponent as IconQR } from '../assets/symbols/qr.svg'
 
 export type OnDecodedHandler = (text: Result|void) => void;
@@ -158,7 +158,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
   }
   const applyConstraints = async (mediaStreamTrack:MediaStreamTrack, constraints:MediaTrackAdvancedConstraints) => {
     await mediaStreamTrack.applyConstraints(constraints);
-    setSettings(()=>mediaStreamTrack.getSettings() || null)
+    setSettings(()=>mediaStreamTrack.getSettings() || null);
   }
 
 
@@ -169,7 +169,7 @@ export const Scanner = ({ closable=true, timeout=30000, interval=500, scale=0.5,
 
       <div style={{ position:'relative', width:"100%", height:'90dvh', backgroundColor:'#333'}}>
         <video ref={videoRef} style={{ width:'auto', maxWidth:'100%', height:'100%', position:'absolute', margin:'auto', left:0, right:0 }} playsInline />
-        <Frame videoSize={videoSize} >
+        <Frame sizes={videoSize} >
           <IconQR style={{fill:'white', opacity:0.6, width:'150px', height:'150'}}/>
         </Frame>/
         <div ref={frameRef} style={{visibility:(scannerState==='PLAYING')?'visible':'hidden', border: 'dashed red', position:'absolute', margin:'auto', left:0, right:0, top:0, bottom:0 }} />

@@ -24,19 +24,25 @@ export type Size = {
   width: number;
   height: number;
 }
-export interface VideoSize {
+export interface ScannerSizes {
   video:Size
   client:Size
 }
 
 
-export interface Scanner {
+export interface ScannerController {
+  devices: MediaDeviceInfo[]|null;
   state: ScannerState|null;
   stream: MediaStream|null;
-  videoSize: VideoSize|null;
   track: MediaStreamTrack|null;
   capabilities: MediaTrackAdvancedCapabilities|null;
   constraints: MediaTrackAdvancedConstraints|null;
   settings: MediaTrackAdvancedSettings|null;
-  deviceId: string|null;
+  sizes: ScannerSizes|null,
+
+  play: (constraints?:MediaTrackConstraints)=>Promise<void>;
+  pause: () => void;
+  stop: () => void;
+  setTorch: (value:boolean) => Promise<void>;
+  setZoom: (value:number) => Promise<void>;
 }
