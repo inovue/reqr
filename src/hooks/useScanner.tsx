@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaTrackAdvancedCapabilities, MediaTrackAdvancedConstraints, MediaTrackAdvancedSettings, ScannerController, ScannerSizes, ScannerState } from "../types";
-import ScannerScreen from "../components/Scanner/ScannerScreen";
 import {BrowserMultiFormatReader} from '@zxing/browser'
+import { Result } from "@zxing/library";
+import { min } from "../utils";
 
 const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}> = {
   'play': 'LOADING',
@@ -11,11 +12,36 @@ const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}>
   'loadedmetadata': 'PLAYING'
 }
 
+export type OnDecodedHandler = (text: Result|void) => void;
+export type OnErrorHandler = (error: Error) => void;
 export type UseScannerOptions = {
-  facingMode?:string
+  prefix:string;
+  facingMode:string;
+  scanDelay:number;
+  timeout:number;
+  frameRate:number;
+  disableArea: number;
+}
+export type UseScannerProps = {
+  onDecoded: OnDecodedHandler;
+  onError?: OnErrorHandler;
+  options?:UseScannerOptions;
 }
 
-export const useScanner = (options?:UseScannerOptions):[ScannerController, ReactNode] => {
+const defaultOptions: UseScannerOptions ={
+  prefix:'reqr',
+  facingMode:'environment',
+  scanDelay:1000,
+  timeout:30000,
+  frameRate:200,
+  disableArea:0.2
+};
+
+export const useScanner = (props:UseScannerProps):ScannerController => {
+  const codeReader = useMemo(() => new BrowserMultiFormatReader(), []);
+
+  const options = {...defaultOptions, ...props.options};
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -28,6 +54,8 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
   const [settings, setSettings] = useState<MediaTrackAdvancedSettings|null>(null);
   const [sizes, setSizes] = useState<ScannerSizes|null>(null);
   
+  const scanInterval = useRef<number>(0);
+  const stopTimeout = useRef<number>(0);
 
   const play = async (constraints?:MediaTrackConstraints) => {
     const video = videoRef.current;
@@ -37,6 +65,7 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
       video.srcObject = await navigator.mediaDevices.getUserMedia({video:constraints});
     }
     await video.play();
+    initCanvas();
   }
 
   const pause = () => {
@@ -54,7 +83,46 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
     }
     video.srcObject = null;
   }
+
+  const scanFrame = () => {
+    const aspectRatio = 4/3
+
+    if (canvasRef.current === null || videoRef.current === null ) return;
+    const {videoWidth, videoHeight} = videoRef.current;
+    const {width, height} = ((v)=>({width:v*disable, height:v*aspectRatio}))(min(videoWidth, videoHeight))
+    
+
+    canvasRef.current.getContext('2d')?.drawImage(
+      videoRef.current,
+      // source x, y, w, h:
+      (videoWidth - videoWidth * options.disableArea) / 2,
+      (videoHeight - videoHeight * options.disableArea) / 2,
+      videoRef.current.videoWidth * scale,
+      videoRef.current.videoHeight * scale,
+      // dest x, y, w, h:
+      0, 0, canvasRef.current.width, canvasRef.current.height
+    )
+    
+    canvasRef.current.toBlob(blob => {
+      if(!blob) return;
+      codeReader.decodeFromImageUrl(URL.createObjectURL(blob)).then((result)=>{
+        if(!result) return;
+        window.clearTimeout(stopTimeout.current);
+        stopTimeout.current = window.setTimeout(()=>stop(), props.options?.timeout);
+        props.onDecoded?.(result);
+      }).catch((error:Error)=>{
+        props.onError?.(error);
+      })
+    })
+  }
   
+  const initCanvas = () => {
+    if(!videoRef.current || !canvasRef.current) return;
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+  }
+
+
   const setTorch = async (value:boolean) => {
     if(!track) return;
     if(!capabilities?.torch) return;
@@ -72,6 +140,7 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
   
   useEffect(() => {
     const video = videoRef.current;
+    console.log(video)
     if(!video) return;
 
     (async () => {
@@ -115,9 +184,27 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
     };
   }, [videoRef]);
 
+  
+  useEffect(()=>{
+    window.clearInterval(scanInterval.current);
+    window.clearTimeout(stopTimeout.current);
+    if(state==='PLAYING'){
+      scanInterval.current = window.setInterval(()=>scanFrame(), options.frameRate || 100);
+      if(options?.timeout){
+        stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
+      }
+    }
+    return () => { 
+      window.clearInterval(scanInterval.current);
+      window.clearTimeout(stopTimeout.current);
+    };
+  },[state]);
+
 
 
   const controller:ScannerController = {
+    videoRef,
+    canvasRef,
     devices,
     state,
     stream,
@@ -126,14 +213,15 @@ export const useScanner = (options?:UseScannerOptions):[ScannerController, React
     constraints,
     settings,
     sizes,
+    options,
+
     play,
     pause,
     stop,
     setTorch,
     setZoom,
   }
-  const container = ScannerScreen({controller, videoRef, canvasRef})
 
-  return [controller, container]
+  return controller
 }
 

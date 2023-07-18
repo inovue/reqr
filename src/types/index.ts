@@ -1,3 +1,5 @@
+import { UseScannerOptions } from "../hooks/useScanner";
+
 export type ScannerState = 'LOADING' | 'PLAYING' | 'PAUSED' | 'STOPPED'
 
 export interface MediaTrackAdvancedCapabilities extends MediaTrackCapabilities {
@@ -31,6 +33,9 @@ export interface ScannerSizes {
 
 
 export interface ScannerController {
+  videoRef: React.RefObject<HTMLVideoElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+
   devices: MediaDeviceInfo[]|null;
   state: ScannerState|null;
   stream: MediaStream|null;
@@ -39,6 +44,7 @@ export interface ScannerController {
   constraints: MediaTrackAdvancedConstraints|null;
   settings: MediaTrackAdvancedSettings|null;
   sizes: ScannerSizes|null,
+  options: UseScannerOptions;
 
   play: (constraints?:MediaTrackConstraints)=>Promise<void>;
   pause: () => void;

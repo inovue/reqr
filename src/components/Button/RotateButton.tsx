@@ -7,10 +7,10 @@ export type RotateButtonProps = ButtonProps & {
   controller: ScannerController|null;
 }
 
-const RotateButton: React.FC<RotateButtonProps> = ({controller, ...props}) => {
+const RotateButton: React.FC<RotateButtonProps> = ({controller}) => {
   const devices = useMemo(()=>controller?.devices, [controller?.devices]);
   const devicesLength = useMemo(()=>controller?.devices?.length||0 , [controller?.devices]);
-  const deviceId = useMemo(()=>controller?.constraints?.deviceId, [controller?.constraints?.deviceId]);
+  const deviceId = useMemo(()=>controller?.capabilities?.deviceId, [controller?.capabilities?.deviceId]);
   
   const rotateDevice = () => {
     if(!controller) return;
@@ -25,7 +25,7 @@ const RotateButton: React.FC<RotateButtonProps> = ({controller, ...props}) => {
   const onClick = () => rotateDevice();
   
   return (
-    <Button disabled={devicesLength<2} onClick={onClick} {...props} ><FaRotate /></Button>
+    <Button disabled={devicesLength<2} onClick={onClick} ><FaRotate /></Button>
   )
 }
 
