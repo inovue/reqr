@@ -6,6 +6,7 @@ import PlayButton from '../Button/PlayButton'
 import { UseScannerProps, useScanner } from '../../hooks/useScanner'
 import ScannerCore from './ScannerCore'
 import ScannerFrame from './ScannerFrame'
+import FormatSelect from '../FormatSelect'
 
 
 export const Scanner = (props: UseScannerProps) => {
@@ -21,6 +22,9 @@ export const Scanner = (props: UseScannerProps) => {
       <ScannerCore controller={controller} />
       <ScannerFrame controller={controller} />
       
+      <div style={{position:'absolute', left:0, top:0}} >
+        <FormatSelect controller={controller} />  
+      </div>
       {canZoom && 
         <div style={{position:'absolute', left:'50%', right:'50%', top:'24px', transform: 'translate(-50%, -50%)', width:'180px' }} >
           <ZoomSlider controller={controller}/>

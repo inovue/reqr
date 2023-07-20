@@ -5,7 +5,7 @@ export type ScannerCoreProps = JSX.IntrinsicElements['video'] & {
 }
 
 const ScannerCore: React.FC<ScannerCoreProps> = ({controller}) => {
-  const videoStyle:React.CSSProperties = {
+  const containerStyle:React.CSSProperties = {
     width: 'auto',
     maxWidth: '100%',
     height: '100%',
@@ -14,17 +14,21 @@ const ScannerCore: React.FC<ScannerCoreProps> = ({controller}) => {
     left: 0,
     right: 0,
   }
+  const videoStyle:React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+  }
   const cavasStyle:React.CSSProperties = {
-    display: 'none',
+    //display: 'none',
   }
   
   return (
     <>
     {controller && (
-      <>
-      <video ref={controller.videoRef} className={`${controller.options.prefix}-video`} style={videoStyle} playsInline/>
-      <canvas ref={controller.canvasRef} className={`${controller.options.prefix}-canvas`} style={cavasStyle} />
-      </>
+      <div style={containerStyle}>
+        <video ref={controller.videoRef} className={`${controller.options.prefix}-video`} style={videoStyle} playsInline/>
+        <canvas ref={controller.canvasRef} className={`${controller.options.prefix}-canvas`} style={cavasStyle} />
+      </div>
     )}
     </>
   )

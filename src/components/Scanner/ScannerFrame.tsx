@@ -1,5 +1,6 @@
+import { formatSettings } from "../../constants/constants";
 import { ScannerController } from "../../types";
-import { calculateContainSize, min } from "../../utils";
+import { Size } from "../../utils";
 
 export type ScannerFrameProps = JSX.IntrinsicElements['div'] & {
   controller: ScannerController|null
@@ -7,16 +8,24 @@ export type ScannerFrameProps = JSX.IntrinsicElements['div'] & {
 }
 
 const ScannerFrame: React.FC<ScannerFrameProps> = ({controller, children, ...props}) => {
-  const frameMargin = 30;
-  const sizes = controller?.sizes;
-  if(!sizes) return (<></>);
+  if(!controller) return (<></>);
+  const scanAreaEdgeRatio = controller.options.scanAreaEdgeRatio;
+  const scanAreaAspectRatio = formatSettings.get(controller.options.format)?.aspectRatio || 1;
 
-  const clipSize = ((v)=>min(v.height, v.width))(calculateContainSize(sizes.video, sizes.client));
-  const offsetX = Math.floor((sizes.client.width - clipSize) / 2) + frameMargin;
-  const offsetY = Math.floor((sizes.client.height - clipSize) / 2) + frameMargin;
+  
+  if(!controller.sizes) return (<></>);
+  const {video:videoSize, client:clientSize} = controller.sizes;
+
+  const clipSize = new Size(videoSize.width, videoSize.height)
+    .contain(clientSize.width*(1-scanAreaEdgeRatio), clientSize.height*(1-scanAreaEdgeRatio))
+    .contain(scanAreaAspectRatio);
+  
+  const offsetX = Math.floor((clientSize.width - clipSize.width) / 2);
+  const offsetY = Math.floor((clientSize.height - clipSize.height) / 2);
+  
   const frameStyle:React.CSSProperties = {
-    width: sizes.client.width,
-    height: sizes.client.height,
+    width: clientSize.width,
+    height: clientSize.height,
     backgroundClip: 'padding-box',
     borderStyle: 'solid',
     borderColor: 'rgba(0,0,0,0.4)',
@@ -30,7 +39,7 @@ const ScannerFrame: React.FC<ScannerFrameProps> = ({controller, children, ...pro
     left: '50%',
     transform: 'translate(-50%, -50%)',
 
-    display: sizes ? 'flex' : 'none',
+    display: controller.sizes ? 'flex' : 'none',
     flexDirection: 'column',
     alignItems:'center',
     justifyContent: 'center',

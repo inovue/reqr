@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaTrackAdvancedCapabilities, MediaTrackAdvancedConstraints, MediaTrackAdvancedSettings, ScannerController, ScannerSizes, ScannerState } from "../types";
-import {BrowserMultiFormatReader} from '@zxing/browser'
-import { Result } from "@zxing/library";
-import { min } from "../utils";
+import {BrowserMultiFormatReader} from '@zxing/browser';
+import { DecodeHintType, Result } from "@zxing/library";
+import { Size } from "../utils";
+import type {SupportedFormat} from '../types';
 
 const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}> = {
   'play': 'LOADING',
@@ -15,12 +16,13 @@ const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}>
 export type OnDecodedHandler = (text: Result|void) => void;
 export type OnErrorHandler = (error: Error) => void;
 export type UseScannerOptions = {
+  formats: SupportedFormat[];
   prefix:string;
   facingMode:string;
   scanDelay:number;
   timeout:number;
   frameRate:number;
-  disableArea: number;
+  scanAreaEdgeRatio: number;
 }
 export type UseScannerProps = {
   onDecoded: OnDecodedHandler;
@@ -29,18 +31,27 @@ export type UseScannerProps = {
 }
 
 const defaultOptions: UseScannerOptions ={
+  formats: ['QR_CODE', 'EAN_13'],
   prefix:'reqr',
   facingMode:'environment',
   scanDelay:1000,
   timeout:30000,
   frameRate:200,
-  disableArea:0.2
+  scanAreaEdgeRatio:0.2
 };
 
-export const useScanner = (props:UseScannerProps):ScannerController => {
-  const codeReader = useMemo(() => new BrowserMultiFormatReader(), []);
 
-  const options = {...defaultOptions, ...props.options};
+
+export const useScanner = (props:UseScannerProps):ScannerController => {
+  
+  const options = useMemo(()=>({...defaultOptions, ...props.options}),[props.options]);
+  const [format, setFormat] = useState<SupportedFormat>(options.formats[0]);
+
+  const codeReader = useMemo(() => {
+    const reader = new BrowserMultiFormatReader();
+    reader.setHints(new Map([[DecodeHintType.POSSIBLE_FORMATS, [format]]]));
+    return reader;
+  }, [format]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,7 +67,7 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   
   const scanInterval = useRef<number>(0);
   const stopTimeout = useRef<number>(0);
-
+  
   const play = async (constraints?:MediaTrackConstraints) => {
     const video = videoRef.current;
     if(!video) return;
@@ -85,20 +96,19 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   }
 
   const scanFrame = () => {
-    const aspectRatio = 4/3
+    const scanAreaEdgeRatio = options.scanAreaEdgeRatio;
+    const scanAreaAspectRatio = 4/3
 
     if (canvasRef.current === null || videoRef.current === null ) return;
     const {videoWidth, videoHeight} = videoRef.current;
-    const {width, height} = ((v)=>({width:v*disable, height:v*aspectRatio}))(min(videoWidth, videoHeight))
+    const {width, height} = new Size(videoWidth, videoHeight)
+      .contain(videoWidth*(1-scanAreaEdgeRatio), videoHeight*(1-scanAreaEdgeRatio))
+      .contain(scanAreaAspectRatio)
     
-
     canvasRef.current.getContext('2d')?.drawImage(
       videoRef.current,
       // source x, y, w, h:
-      (videoWidth - videoWidth * options.disableArea) / 2,
-      (videoHeight - videoHeight * options.disableArea) / 2,
-      videoRef.current.videoWidth * scale,
-      videoRef.current.videoHeight * scale,
+      (videoWidth - width) / 2, (videoHeight - height) / 2, width, height,
       // dest x, y, w, h:
       0, 0, canvasRef.current.width, canvasRef.current.height
     )
@@ -117,9 +127,11 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   }
   
   const initCanvas = () => {
-    if(!videoRef.current || !canvasRef.current) return;
-    canvasRef.current.width = videoRef.current.videoWidth;
-    canvasRef.current.height = videoRef.current.videoHeight;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if(!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
   }
 
 
@@ -189,8 +201,8 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     window.clearInterval(scanInterval.current);
     window.clearTimeout(stopTimeout.current);
     if(state==='PLAYING'){
-      scanInterval.current = window.setInterval(()=>scanFrame(), options.frameRate || 100);
-      if(options?.timeout){
+      scanInterval.current = window.setInterval(()=>scanFrame(), options.frameRate);
+      if(0 < options.timeout){
         stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
       }
     }
@@ -213,11 +225,14 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     constraints,
     settings,
     sizes,
+    format,
     options,
 
+    
     play,
     pause,
     stop,
+    setFormat,
     setTorch,
     setZoom,
   }

@@ -1,4 +1,7 @@
+import { BarcodeFormat } from "@zxing/library";
 import { UseScannerOptions } from "../hooks/useScanner";
+
+export type SupportedFormat = keyof typeof BarcodeFormat;
 
 export type ScannerState = 'LOADING' | 'PLAYING' | 'PAUSED' | 'STOPPED'
 
@@ -45,10 +48,12 @@ export interface ScannerController {
   settings: MediaTrackAdvancedSettings|null;
   sizes: ScannerSizes|null,
   options: UseScannerOptions;
+  format: SupportedFormat;
 
   play: (constraints?:MediaTrackConstraints)=>Promise<void>;
   pause: () => void;
   stop: () => void;
+  setFormat: (format:SupportedFormat) => void;
   setTorch: (value:boolean) => Promise<void>;
   setZoom: (value:number) => Promise<void>;
 }
