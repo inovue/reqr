@@ -32,7 +32,7 @@ export type UseScannerProps = {
 }
 
 const defaultOptions: UseScannerOptions ={
-  formats: [ 'QR_CODE', "EAN_13"],
+  formats: ['QR_CODE', "EAN_13"],
   prefix:'reqr',
   facingMode:'environment',
   scanDelay:1000,
@@ -236,7 +236,6 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     sizes,
     format,
     options,
-
     
     play,
     pause,

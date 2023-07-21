@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import FormatSelect from '../assemble/FormatSelect'
 import PlayButton from '../assemble/PlayButton'
 import RotateButton from '../assemble/RotateButton'
-import ScannerCore from '../assemble/ScannerCore'
+import BarCodeScannerCore from '../assemble/BarCodeScannerCore'
 import TorchButton from '../assemble/TorchButton'
 import ZoomSlider from '../assemble/ZoomSlider'
 
@@ -20,7 +20,7 @@ export const Scanner = (props: UseScannerProps) => {
   return (
     <>
     <div style={{ position:'relative', width:"100%", height:'90dvh', backgroundColor:'#333'}}>
-      <ScannerCore controller={controller} />
+      <BarCodeScannerCore controller={controller} />
       
       <div style={{position:'absolute', left:0, top:0}} >
         <FormatSelect controller={controller} />  
