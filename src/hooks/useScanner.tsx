@@ -5,6 +5,8 @@ import { BarcodeFormat, DecodeHintType, Result } from "@zxing/library";
 import { Size } from "../utils";
 import type {SupportedFormat} from '../types';
 import { formatSettings } from "../constants/constants";
+import useInterval from "./useInterval";
+import useTimeout from "./useTimeout";
 
 const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}> = {
   'play': 'LOADING',
@@ -64,10 +66,21 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   const constraints = useMemo(()=> track?.getConstraints() as (MediaTrackAdvancedConstraints|null) || null, [track]);
   const [settings, setSettings] = useState<MediaTrackAdvancedSettings|null>(null);
   const [sizes, setSizes] = useState<ScannerSizes|null>(null);
+
   
-  const scanInterval = useRef<number>(0);
-  const stopTimeout = useRef<number>(0);
   
+
+  const scanInterval = useInterval(()=>scanFrame(), options.scanDelay);
+  const stopTimeout = useTimeout(()=>stop(), options.timeout);
+
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const lockTimeout = useTimeout(()=>setIsLocked(false), 3000);
+  useEffect(()=>{
+    if(!isLocked) return;
+    lockTimeout.start();
+  },[isLocked]);
+  
+
   const play = async (constraints?:MediaTrackConstraints) => {
     const video = videoRef.current;
     if(!video) return;
@@ -89,8 +102,9 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   const stop = () => {
     const video = videoRef.current;
     if(!video) return;
-    if(video.srcObject instanceof MediaStream){
-      video.srcObject.getTracks().forEach(track => track.stop());
+    if(video.srcObject){
+      const srcObject = video.srcObject as MediaStream;
+      srcObject.getTracks().forEach(track => track.stop());
     }
     video.srcObject = null;
   }
@@ -116,10 +130,11 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     
     canvasRef.current.toBlob(blob => {
       if(!blob) return;
+      if(isLocked) return;
       codeReaderRef.current.decodeFromImageUrl(URL.createObjectURL(blob)).then((result)=>{
         if(!result) return;
-        window.clearTimeout(stopTimeout.current);
-        stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
+        stopTimeout.reset();
+        setIsLocked(true);
         props.onDecoded?.(result);
       }).catch((error:Error)=>{
         props.onError?.(error);
@@ -207,17 +222,17 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   
   useEffect(()=>{
     if(state==='PLAYING'){
-      scanInterval.current = window.setInterval(()=>scanFrame(), options.frameRate);
+      scanInterval.reset();
       if(0 < options.timeout){
-        stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
+        stopTimeout.reset();
       }
     }else{
-      window.clearInterval(scanInterval.current);
-      window.clearTimeout(stopTimeout.current);
+      scanInterval.clear();
+      stopTimeout.clear();
     }
     return () => { 
-      window.clearInterval(scanInterval.current);
-      window.clearTimeout(stopTimeout.current);
+      scanInterval.clear();
+      stopTimeout.clear();
     };
   },[state]);
 
@@ -236,7 +251,7 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     sizes,
     format,
     options,
-    
+
     play,
     pause,
     stop,

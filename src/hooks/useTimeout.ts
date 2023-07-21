@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 
-type TimeoutRef = {
+type UseTimeoutFunctions = {
   start: () => void;
   clear: () => void;
   reset: () => void;
 };
 
-export default function useTimeout(callback: () => void, delay: number): TimeoutRef {
+export default function useTimeout(callback: () => void, delay: number): UseTimeoutFunctions {
   const timeoutRef = useRef<number | null>(null);
   const savedCallback = useRef<() => void>(() => {return;});
 

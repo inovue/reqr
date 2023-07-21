@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 
-type IntervalRef = {
+type UseIntervalFunctions = {
   start: () => void;
   clear: () => void;
   reset: () => void;
 };
 
-export default function useInterval(callback: () => void, delay: number): IntervalRef {
+export default function useInterval(callback: () => void, delay: number): UseIntervalFunctions {
   const intervalRef = useRef<number | null>(null);
   const savedCallback = useRef<() => void>(() => {return;});
 
