@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
-import ZoomSlider from '../Input/ZoomSlider'
-import RotateButton from '../Button/RotateButton'
-import TorchButton from '../Button/TorchButton'
-import PlayButton from '../Button/PlayButton'
+
+import FormatSelect from '../assemble/FormatSelect'
+import PlayButton from '../assemble/PlayButton'
+import RotateButton from '../assemble/RotateButton'
+import ScannerCore from '../assemble/ScannerCore'
+import TorchButton from '../assemble/TorchButton'
+import ZoomSlider from '../assemble/ZoomSlider'
+
 import { UseScannerProps, useScanner } from '../../hooks/useScanner'
-import ScannerCore from './ScannerCore'
-import ScannerFrame from './ScannerFrame'
-import FormatSelect from '../FormatSelect'
 
 
 export const Scanner = (props: UseScannerProps) => {
@@ -20,7 +21,6 @@ export const Scanner = (props: UseScannerProps) => {
     <>
     <div style={{ position:'relative', width:"100%", height:'90dvh', backgroundColor:'#333'}}>
       <ScannerCore controller={controller} />
-      <ScannerFrame controller={controller} />
       
       <div style={{position:'absolute', left:0, top:0}} >
         <FormatSelect controller={controller} />  

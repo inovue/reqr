@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import {Scanner} from './components/Scanner/Scanner'
+import {Scanner} from './components/complete/BarCodeScanner'
 import { OnDecodedHandler } from './hooks/useScanner';
 
 

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MediaTrackAdvancedCapabilities, MediaTrackAdvancedConstraints, MediaTrackAdvancedSettings, ScannerController, ScannerSizes, ScannerState } from "../types";
 import {BrowserMultiFormatReader} from '@zxing/browser';
-import { DecodeHintType, Result } from "@zxing/library";
+import { BarcodeFormat, DecodeHintType, Result } from "@zxing/library";
 import { Size } from "../utils";
 import type {SupportedFormat} from '../types';
+import { formatSettings } from "../constants/constants";
 
 const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}> = {
   'play': 'LOADING',
@@ -31,12 +32,12 @@ export type UseScannerProps = {
 }
 
 const defaultOptions: UseScannerOptions ={
-  formats: ['QR_CODE', 'EAN_13'],
+  formats: [ 'QR_CODE', "EAN_13"],
   prefix:'reqr',
   facingMode:'environment',
   scanDelay:1000,
   timeout:30000,
-  frameRate:200,
+  frameRate:500,
   scanAreaEdgeRatio:0.2
 };
 
@@ -44,13 +45,12 @@ const defaultOptions: UseScannerOptions ={
 
 export const useScanner = (props:UseScannerProps):ScannerController => {
   
+  const codeReaderRef = useRef<BrowserMultiFormatReader>(new BrowserMultiFormatReader());
   const options = useMemo(()=>({...defaultOptions, ...props.options}),[props.options]);
   const [format, setFormat] = useState<SupportedFormat>(options.formats[0]);
 
-  const codeReader = useMemo(() => {
-    const reader = new BrowserMultiFormatReader();
-    reader.setHints(new Map([[DecodeHintType.POSSIBLE_FORMATS, [format]]]));
-    return reader;
+  useEffect(() => {
+    codeReaderRef.current.setHints(new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat[format]]]]));
   }, [format]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -96,8 +96,9 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   }
 
   const scanFrame = () => {
-    const scanAreaEdgeRatio = options.scanAreaEdgeRatio;
-    const scanAreaAspectRatio = 4/3
+    const formatSetting = formatSettings.get(format);
+    const scanAreaEdgeRatio = formatSetting?.edgeRatio || 0.2;
+    const scanAreaAspectRatio = formatSetting?.aspectRatio || 1;
 
     if (canvasRef.current === null || videoRef.current === null ) return;
     const {videoWidth, videoHeight} = videoRef.current;
@@ -115,10 +116,10 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     
     canvasRef.current.toBlob(blob => {
       if(!blob) return;
-      codeReader.decodeFromImageUrl(URL.createObjectURL(blob)).then((result)=>{
+      codeReaderRef.current.decodeFromImageUrl(URL.createObjectURL(blob)).then((result)=>{
         if(!result) return;
         window.clearTimeout(stopTimeout.current);
-        stopTimeout.current = window.setTimeout(()=>stop(), props.options?.timeout);
+        stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
         props.onDecoded?.(result);
       }).catch((error:Error)=>{
         props.onError?.(error);
@@ -130,8 +131,17 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if(!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+
+    const formatSetting = formatSettings.get(format);
+    const scanAreaEdgeRatio = formatSetting?.edgeRatio || 0.2;
+    const scanAreaAspectRatio = formatSetting?.aspectRatio || 1;
+
+    const {width, height} = new Size(video.videoWidth, video.videoHeight)
+    .contain(video.videoWidth*(1-scanAreaEdgeRatio), video.videoHeight*(1-scanAreaEdgeRatio))
+    .contain(scanAreaAspectRatio);
+
+    canvas.width = width;
+    canvas.height = height;
   }
 
 
@@ -152,7 +162,6 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
   
   useEffect(() => {
     const video = videoRef.current;
-    console.log(video)
     if(!video) return;
 
     (async () => {
@@ -165,7 +174,6 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
     });
 
     const handleSrcObjectChange:EventListener = (event) => {
-      console.log("useScanner", event.type, video.srcObject);
       const srcObject = video.srcObject as MediaStream|null;
       setStream(()=>srcObject);
       setSettings(()=>srcObject?.getTracks()?.[0].getSettings() || null);
@@ -198,13 +206,14 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
 
   
   useEffect(()=>{
-    window.clearInterval(scanInterval.current);
-    window.clearTimeout(stopTimeout.current);
     if(state==='PLAYING'){
       scanInterval.current = window.setInterval(()=>scanFrame(), options.frameRate);
       if(0 < options.timeout){
         stopTimeout.current = window.setTimeout(()=>stop(), options.timeout);
       }
+    }else{
+      window.clearInterval(scanInterval.current);
+      window.clearTimeout(stopTimeout.current);
     }
     return () => { 
       window.clearInterval(scanInterval.current);

@@ -1,4 +1,4 @@
-import Button, { ButtonProps } from "./Button";
+import Button, { ButtonProps } from "../ui/Button";
 import { MdFlashlightOn, MdFlashlightOff } from 'react-icons/md'
 import { ScannerController } from "../../types";
 import { useMemo } from "react";

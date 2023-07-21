@@ -1,4 +1,4 @@
-import Button, { ButtonProps } from "./Button";
+import Button, { ButtonProps } from "../ui/Button";
 import { ScannerController, ScannerState } from "../../types";
 import { useMemo } from "react";
 import { FaPlay, FaPause } from 'react-icons/fa'
