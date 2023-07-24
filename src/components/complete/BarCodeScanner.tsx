@@ -10,7 +10,7 @@ import ZoomSlider from '../assemble/ZoomSlider'
 import { UseScannerProps, useScanner } from '../../hooks/useScanner'
 
 
-export const Scanner = (props: UseScannerProps) => {
+export const BarCodeScanner = (props: UseScannerProps) => {
   const controller = useScanner(props);
   
   const canZoom = useMemo(()=> controller.capabilities?.zoom, [controller.capabilities?.zoom]);

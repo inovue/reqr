@@ -9,7 +9,7 @@ import svgr from 'vite-plugin-svgr'
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/lib/index.jsx'),
+      entry: resolve(__dirname, 'src/lib/index.ts'),
       name: 'My Component',
       fileName: (format) => `my-component.${format}.js`
     },

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import {Scanner} from './components/complete/BarCodeScanner'
+import {BarCodeScanner} from './components/complete/BarCodeScanner'
 import { OnDecodedHandler } from './hooks/useScanner';
 
 
@@ -13,7 +13,7 @@ function App() {
 
   return (
     <>
-      <Scanner onDecoded={onDecodedHandler}/>
+      <BarCodeScanner onDecoded={onDecodedHandler}/>
       <h1>REACT QRCODE READER (REQR)</h1>
       <h2>Results</h2>
       <p>{codes.join('\n')}</p>

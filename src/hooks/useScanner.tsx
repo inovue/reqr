@@ -8,13 +8,14 @@ import { formatSettings } from "../constants/constants";
 import useInterval from "./useInterval";
 import useTimeout from "./useTimeout";
 
-const eventState:Partial<{[key in keyof HTMLVideoElementEventMap]:ScannerState}> = {
-  'play': 'LOADING',
-  'playing': 'PLAYING',
-  'pause': 'PAUSED',
-  'emptied': 'STOPPED',
-  'loadedmetadata': 'PLAYING'
-}
+const eventStateMap = new Map<keyof HTMLVideoElementEventMap, ScannerState>([
+  ['play', 'LOADING'],
+  ['playing', 'PLAYING'],
+  ['pause', 'PAUSED'],
+  ['emptied', 'STOPPED'],
+  ['loadedmetadata', 'PLAYING']
+]);
+
 
 export type OnDecodedHandler = (text: Result|void) => void;
 export type OnErrorHandler = (error: Error) => void;
@@ -192,7 +193,7 @@ export const useScanner = (props:UseScannerProps):ScannerController => {
       const srcObject = video.srcObject as MediaStream|null;
       setStream(()=>srcObject);
       setSettings(()=>srcObject?.getTracks()?.[0].getSettings() || null);
-      setState(()=>eventState?.[event.type]);
+      setState(()=>eventStateMap.get(event.type as keyof HTMLVideoElementEventMap) || null);
     };
     
     const handleResize:EventListener = () => {
