@@ -1,5 +1,5 @@
 {
-  "name": "reqr",
+  "name": "@inovue/reqr",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/inovue/use-barcode-scanner"
+    "url": "git+https://github.com/inovue/use-barcode-scanner.git"
   },
   "exports": {
     ".": {
@@ -55,5 +55,10 @@
     "vite": "^4.3.9",
     "vite-plugin-dts": "^3.3.1",
     "vite-plugin-svgr": "^3.2.0"
-  }
+  },
+  "description": "",
+  "bugs": {
+    "url": "https://github.com/inovue/use-barcode-scanner/issues"
+  },
+  "homepage": "https://github.com/inovue/use-barcode-scanner#readme"
 }
