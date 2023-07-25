@@ -35,3 +35,9 @@ By cloning a repository from a remote repository directly to devcontainer, you c
 
 [ブラウザのJavaScriptだけで名刺検出やってみる](https://zenn.dev/kikuchy/scraps/9ee6fb4e0e7c25)
 [【 ocr の認識率を上げる画像処理】初心者でも簡単なノイズ除去](https://chuckischarles.hatenablog.com/entry/2018/11/26/105446)
+
+
+NPM Publish
+[Viteのライブラリモードを使ってnpmパッケージを作成&公開してみる](https://zenn.dev/s_takashi/articles/20ecebd0a42010)
+
+[Creating a TypeScript Package with Vite](https://onderonur.netlify.app/blog/creating-a-typescript-library-with-vite/)

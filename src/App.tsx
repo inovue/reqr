@@ -1,7 +1,11 @@
 import { useState } from 'react'
-import {BarCodeScanner} from './components/complete/BarCodeScanner'
+
 import { OnDecodedHandler } from './hooks/useScanner';
 
+//import {BarCodeScanner} from './components/complete/BarCodeScanner'
+
+import {BarCodeScanner} from '../dist/index'
+import '../dist/style.css'
 
 function App() {
   const [codes, setCodes] = useState<string[]>([])

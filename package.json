@@ -3,6 +3,24 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./dist/index.umd.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": "inovue",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inovue/use-barcode-scanner"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.umd.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -35,6 +53,7 @@
     "eslint-plugin-react-refresh": "^0.3.4",
     "typescript": "^5.0.2",
     "vite": "^4.3.9",
+    "vite-plugin-dts": "^3.3.1",
     "vite-plugin-svgr": "^3.2.0"
   }
 }
