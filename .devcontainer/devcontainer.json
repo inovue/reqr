@@ -31,11 +31,12 @@
         }
       },
       "extensions": [
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
-        "esbenp.prettier-vscode",
-        "ms-vscode.live-server"
-      ]
+		"GitHub.copilot",
+		"GitHub.copilot-chat",
+		"esbenp.prettier-vscode",
+		"ms-vscode.live-server",
+		"github.vscode-github-actions"
+	]
     }
   }
 }
